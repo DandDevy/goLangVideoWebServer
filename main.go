@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,18 +11,40 @@ import (
 
 const videoFilePath string = "videos"
 
+func main() {
+	http.HandleFunc("/", sayHello)
+	http.HandleFunc("/getVideoNames", sayVideoNames)
+	http.HandleFunc("/getVideoFileDetails", giveVideoFileDetails)
+
+	if err := http.ListenAndServe(":8080", nil); err != nil {
+		panic(err)
+	}
+}
+
 /*
 HelloWorld to test if things are alright
  */
 func sayHello(w http.ResponseWriter, r *http.Request) {
 
+	println("sayHello")
 	message := r.URL.Path
 	message = strings.TrimPrefix(message, "/")
 	message = "Hello " + message
 	_, _ = w.Write([]byte(message))
 }
 
-func sayNamesOfVideos(w http.ResponseWriter, r *http.Request)  {
+type VideoDetail struct {
+	Name string
+	Size int
+}
+
+func giveVideoFileDetails(w http.ResponseWriter, r *http.Request)  {
+	println("giveVideoFileDetails")
+
+	//set response to json
+	w.Header().Set("Content-Type", "application/json")
+
+
 
 	//opens file
 	f, err := os.Open(videoFilePath)
@@ -31,33 +54,42 @@ func sayNamesOfVideos(w http.ResponseWriter, r *http.Request)  {
 
 	videoFilesInfo, err := f.Readdir(-1)
 
-	//closes file
-	_ = f.Close()
+	//push close file
+	defer f.Close()
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	videoFilesInfoLength := len(videoFilesInfo)
+	fmt.Printf("%v   %-T\n", videoFilesInfoLength, videoFilesInfoLength)
 
+	var (
+		videoDetails [2]VideoDetail
+	)
 
-	println("videoFilesInfo", videoFilesInfo)
-	fmt.Printf("type:%T    size: %v\n", videoFilesInfo, len(videoFilesInfo))
-	
-	
-	
-
-	//sends the list of names
-	for _, file := range videoFilesInfo {
-		fmt.Println(file.Name())
-		_, _ = w.Write([]byte(file.Name()))
+	for i, _ := range videoFilesInfo{
+		println("videoFilesInfo[i].Name() : ",videoFilesInfo[i].Name(), "videoFilesInfo[i].Size() : ", videoFilesInfo[i].Size())
 	}
+	videoDetails[0] = VideoDetail{
+		Name: "video.mp4",
+		Size: 4}
+
+	fmt.Printf("%t", videoDetails)
+
+	json.NewEncoder(w).Encode(videoDetails)
+
+	//println("videoFilesInfo", videoFilesInfo)
+	//fmt.Printf("type:%T    size: %v\n", videoFilesInfo, len(videoFilesInfo))
+
 
 }
 
 /*
 Get the name of the first video.
  */
-func sayNameOfFirstVideo(w http.ResponseWriter, r *http.Request)  {
+func sayVideoNames(w http.ResponseWriter, r *http.Request)  {
+	println("sayVideoNames")
 	//message := "asd"
 
 	//opens file
@@ -82,16 +114,4 @@ func sayNameOfFirstVideo(w http.ResponseWriter, r *http.Request)  {
 	}
 
 	//_, _ = w.Write([]byte(message))
-}
-
-
-
-func main() {
-	http.HandleFunc("/", sayHello)
-	http.HandleFunc("/getFirstVideoName", sayNameOfFirstVideo)
-	http.HandleFunc("/getVideoFileNames", sayNamesOfVideos)
-
-	if err := http.ListenAndServe(":8080", nil); err != nil {
-		panic(err)
-	}
 }
